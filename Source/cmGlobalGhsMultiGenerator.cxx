@@ -2,17 +2,23 @@
    file Copyright.txt or https://cmake.org/licensing for details.  */
 #include "cmGlobalGhsMultiGenerator.h"
 
+#include <cmsys/SystemTools.hxx>
+
+#include "cmAlgorithms.h"
+#include "cmDocumentationEntry.h"
 #include "cmGeneratedFileStream.h"
 #include "cmGeneratorTarget.h"
 #include "cmGhsMultiTargetGenerator.h"
 #include "cmLocalGhsMultiGenerator.h"
 #include "cmMakefile.h"
 #include "cmVersion.h"
-#include <cmAlgorithms.h>
-#include <cmsys/SystemTools.hxx>
+
+// JEG TODO * Fix finding of make program. It should first look in
+// PATH or registry on WIndows, then it should allow spec of a
+// GHS_TOOLS_DIR.
 
 const char* cmGlobalGhsMultiGenerator::FILE_EXTENSION = ".gpj";
-const char* cmGlobalGhsMultiGenerator::DEFAULT_MAKE_PROGRAM = "gbuild";
+const char* cmGlobalGhsMultiGenerator::DEFAULT_MAKE_PROGRAM = "/home/jackg/build/linux86-comp-deploy/gbuild";
 
 cmGlobalGhsMultiGenerator::cmGlobalGhsMultiGenerator(cmake* cm)
   : cmGlobalGenerator(cm)
@@ -43,20 +49,27 @@ void cmGlobalGhsMultiGenerator::EnableLanguage(
   std::vector<std::string> const& l, cmMakefile* mf, bool optional)
 {
   mf->AddDefinition("CMAKE_SYSTEM_NAME", "GHS-MULTI");
-  mf->AddDefinition("CMAKE_SYSTEM_PROCESSOR", "ARM");
+  // JEG: Is this used anywhere? What are the semantics? GHS uses
+  // lower case. Hmm.
+  //  mf->AddDefinition("CMAKE_SYSTEM_PROCESSOR", "ARM");
 
   const std::string ghsCompRoot(GetCompRoot());
-  mf->AddDefinition("GHS_COMP_ROOT", ghsCompRoot.c_str());
-  std::string ghsCompRootStart =
-    0 == ghsCompRootStart.size() ? "" : ghsCompRoot + "/";
-  mf->AddDefinition("CMAKE_C_COMPILER",
-                    std::string(ghsCompRootStart + "ccarm.exe").c_str());
+  std::cerr << "Comp root is " + ghsCompRoot ;
+  if (!mf->IsDefinitionSet("CMAKE_C_COMPILER")) {
+      std::string compExePath = ghsCompRoot + "/ccint"
+          + mf->GetSafeDefinition("GHS_PRIMARY_TARGET")
+          + ((mf->GetDefinition("win32")) ? ".exe" : "");
+      mf->AddDefinition("CMAKE_C_COMPILER",
+                        compExePath.c_str());
+  }
   mf->AddDefinition("CMAKE_C_COMPILER_ID_RUN", "TRUE");
   mf->AddDefinition("CMAKE_C_COMPILER_ID", "GHS");
   mf->AddDefinition("CMAKE_C_COMPILER_FORCED", "TRUE");
 
-  mf->AddDefinition("CMAKE_CXX_COMPILER",
-                    std::string(ghsCompRootStart + "cxarm.exe").c_str());
+  if (!mf->IsDefinitionSet("CMAKE_CXX_COMPILER")) {
+      mf->AddDefinition("CMAKE_CXX_COMPILER",
+                        std::string(ghsCompRoot + "cxarm.exe").c_str());
+  }
   mf->AddDefinition("CMAKE_CXX_COMPILER_ID_RUN", "TRUE");
   mf->AddDefinition("CMAKE_CXX_COMPILER_ID", "GHS");
   mf->AddDefinition("CMAKE_CXX_COMPILER_FORCED", "TRUE");
@@ -108,64 +121,7 @@ std::string cmGlobalGhsMultiGenerator::FindGhsBuildCommand()
 
 std::string cmGlobalGhsMultiGenerator::GetCompRoot()
 {
-  std::string output;
-
-  const std::vector<std::string> potentialDirsHardPaths(
-    GetCompRootHardPaths());
-  const std::vector<std::string> potentialDirsRegistry(GetCompRootRegistry());
-
-  std::vector<std::string> potentialDirsComplete;
-  potentialDirsComplete.insert(potentialDirsComplete.end(),
-                               potentialDirsHardPaths.begin(),
-                               potentialDirsHardPaths.end());
-  potentialDirsComplete.insert(potentialDirsComplete.end(),
-                               potentialDirsRegistry.begin(),
-                               potentialDirsRegistry.end());
-
-  // Use latest version
-  std::string outputDirName;
-  for (std::vector<std::string>::const_iterator potentialDirsCompleteIt =
-         potentialDirsComplete.begin();
-       potentialDirsCompleteIt != potentialDirsComplete.end();
-       ++potentialDirsCompleteIt) {
-    const std::string dirName(
-      cmsys::SystemTools::GetFilenameName(*potentialDirsCompleteIt));
-    if (dirName.compare(outputDirName) > 0) {
-      output = *potentialDirsCompleteIt;
-      outputDirName = dirName;
-    }
-  }
-
-  return output;
-}
-
-std::vector<std::string> cmGlobalGhsMultiGenerator::GetCompRootHardPaths()
-{
-  std::vector<std::string> output;
-  cmSystemTools::Glob("C:/ghs", "comp_[^;]+", output);
-  for (std::vector<std::string>::iterator outputIt = output.begin();
-       outputIt != output.end(); ++outputIt) {
-    *outputIt = "C:/ghs/" + *outputIt;
-  }
-  return output;
-}
-
-std::vector<std::string> cmGlobalGhsMultiGenerator::GetCompRootRegistry()
-{
-  std::vector<std::string> output(2);
-  cmsys::SystemTools::ReadRegistryValue(
-    "HKEY_LOCAL_"
-    "MACHINE\\SOFTWARE\\Wow6432Node\\Microsoft\\"
-    "Windows\\CurrentVersion\\Uninstall\\"
-    "GreenHillsSoftwared771f1b4;InstallLocation",
-    output[0]);
-  cmsys::SystemTools::ReadRegistryValue(
-    "HKEY_LOCAL_"
-    "MACHINE\\SOFTWARE\\Wow6432Node\\Microsoft\\"
-    "Windows\\CurrentVersion\\Uninstall\\"
-    "GreenHillsSoftware9881cef6;InstallLocation",
-    output[1]);
-  return output;
+    return this->GetCurrentMakefile()->GetSafeDefinition("GHS_TOOLS_DIR");
 }
 
 void cmGlobalGhsMultiGenerator::OpenBuildFileStream(
@@ -304,7 +260,17 @@ void cmGlobalGhsMultiGenerator::WriteMacros()
 
 void cmGlobalGhsMultiGenerator::WriteHighLevelDirectives()
 {
-  *this->GetBuildFileStream() << "primaryTarget=arm_integrity.tgt"
+  char const* primaryTargetCache =
+    this->GetCMakeInstance()->GetCacheDefinition("GHS_PRIMARY_TARGET");
+  if (NULL == primaryTargetCache) {
+    cmSystemTools::Error("GHS_PRIMARY_TARGET cache variable must be set");
+    return;
+  } 
+  
+  std::string primaryTarget = "primaryTarget="
+      + std::string(primaryTargetCache)
+      + "_integrity.tgt";
+  *this->GetBuildFileStream() << primaryTarget
                               << std::endl;
   char const* const customization =
     this->GetCMakeInstance()->GetCacheDefinition("GHS_CUSTOMIZATION");

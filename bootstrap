@@ -305,6 +305,10 @@ CMAKE_CXX_SOURCES="\
   cmMakefileExecutableTargetGenerator \
   cmMakefileLibraryTargetGenerator \
   cmMakefileTargetGenerator \
+  cmGlobalGhsMultiGenerator \
+  cmLocalGhsMultiGenerator \
+  cmGhsMultiTargetGenerator \
+  cmGhsMultiGpj \
   cmMakefileUtilityTargetGenerator \
   cmOutputConverter \
   cmOSXBundleGenerator \

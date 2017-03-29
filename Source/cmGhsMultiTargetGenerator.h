@@ -22,7 +22,9 @@ public:
 
   virtual ~cmGhsMultiTargetGenerator();
 
+#if defined(CMAKE_BUILD_WITH_CMAKE)
   virtual void Generate();
+#endif
 
   bool IncludeThisTarget();
   std::vector<cmSourceFile*> GetSources() const;
@@ -74,27 +76,35 @@ private:
   void WriteIncludes(const std::string& config, const std::string& language);
   void WriteTargetLinkLibraries(std::string const& config,
                                 std::string const& language);
-  void WriteCustomCommands();
-  void WriteCustomCommandsHelper(
-    std::vector<cmCustomCommand> const& commandsSet,
-    cmTarget::CustomCommandType commandType);
+#if defined(CMAKE_BUILD_WITH_CMAKE) // see comment in .cxx file
+
   void WriteSources(
     std::vector<cmSourceFile*> const& objectSources,
     std::map<const cmSourceFile*, std::string> const& objectNames);
+
+  void WriteCustomCommands();
+
+  void WriteCustomCommandsHelper(
+    std::vector<cmCustomCommand> const& commandsSet,
+    cmTarget::CustomCommandType commandType);
+
+  static std::string ComputeLongestObjectDirectory(
+    cmLocalGhsMultiGenerator const* localGhsMultiGenerator,
+    cmGeneratorTarget* generatorTarget, cmSourceFile* const sourceFile);
+
   static std::map<const cmSourceFile*, std::string> GetObjectNames(
     std::vector<cmSourceFile*>* objectSources,
     cmLocalGhsMultiGenerator* localGhsMultiGenerator,
     cmGeneratorTarget* generatorTarget);
+
+#endif // CMAKE_BUILD_WITH_CMAKE
+
   static void WriteObjectLangOverride(cmGeneratedFileStream* fileStream,
                                       cmSourceFile* sourceFile);
   static void WriteObjectDir(cmGeneratedFileStream* fileStream,
                              std::string const& dir);
   std::string GetOutputDirectory(const std::string& config) const;
   std::string GetOutputFilename(const std::string& config) const;
-  static std::string ComputeLongestObjectDirectory(
-    cmLocalGhsMultiGenerator const* localGhsMultiGenerator,
-    cmGeneratorTarget* generatorTarget, cmSourceFile* const sourceFile);
-
   bool IsNotKernel(std::string const& config, const std::string& language);
   static bool DetermineIfTargetGroup(const cmGeneratorTarget* target);
   bool DetermineIfDynamicDownload(std::string const& config,

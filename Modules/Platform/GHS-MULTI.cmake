@@ -14,4 +14,6 @@ set(GHSMULTI 1)
 set(CMAKE_FIND_LIBRARY_PREFIXES "")
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 
-include(Platform/WindowsPaths)
+if (win32)
+  include(Platform/WindowsPaths)
+endif()

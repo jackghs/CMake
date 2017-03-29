@@ -312,6 +312,14 @@ set(SRCS
   cmRulePlaceholderExpander.cxx
   cmRulePlaceholderExpander.h
   cmLocalUnixMakefileGenerator3.cxx
+  cmGlobalGhsMultiGenerator.cxx
+  cmGlobalGhsMultiGenerator.h
+  cmLocalGhsMultiGenerator.cxx
+  cmLocalGhsMultiGenerator.h
+  cmGhsMultiTargetGenerator.cxx
+  cmGhsMultiTargetGenerator.h
+  cmGhsMultiGpj.cxx
+  cmGhsMultiGpj.h
   cmLocale.h
   ${MACH_SRCS}
   cmMakefile.cxx

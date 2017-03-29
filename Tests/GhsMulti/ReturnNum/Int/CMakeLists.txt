@@ -1,1 +1,1 @@
-add_executable(AppDD AppDD.int Default.bsp)
+add_executable(AppDD AppDD.int)

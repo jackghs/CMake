@@ -18,6 +18,8 @@ cmLocalGhsMultiGenerator::~cmLocalGhsMultiGenerator()
 {
 }
 
+#if defined(CMAKE_BUILD_WITH_CMAKE)
+
 void cmLocalGhsMultiGenerator::Generate()
 {
   std::vector<cmGeneratorTarget*> tgts = this->GetGeneratorTargets();
@@ -31,3 +33,5 @@ void cmLocalGhsMultiGenerator::Generate()
     tg.Generate();
   }
 }
+
+#endif // CMAKE_BUILD_WITH_CMAKE

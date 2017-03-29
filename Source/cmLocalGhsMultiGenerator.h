@@ -20,10 +20,12 @@ public:
 
   virtual ~cmLocalGhsMultiGenerator();
 
+#if defined(CMAKE_BUILD_WITH_CMAKE)
   /**
    * Generate the makefile for this directory.
    */
   virtual void Generate();
+#endif
 };
 
 #endif
